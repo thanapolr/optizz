@@ -7,6 +7,7 @@ import (
 	"path"
 	"reflect"
 	"runtime"
+	"strings"
 )
 
 // RouterGroup is an abstraction of a Fiber router group.
@@ -77,11 +78,13 @@ func (g *RouterGroup) Handle(path, method string, handler *OptizzHandler, middle
 	if handler != nil {
 		ri := handler.RouteInfo
 		oi := handler.OperationInfo
-
-		// TODO better ID e.g. [method]-[full path]-[function name]
+		
 		// Set an operation ID if none is provided.
 		if oi.ID == "" {
-			oi.ID = ri.HandlerName()
+			// [method]-[full path]-[function name]
+			abs := joinPaths(g.path, path)
+			abs = strings.ReplaceAll(abs, "/", "-")
+			oi.ID = fmt.Sprintf("%s-%s-%s", method, abs, ri.HandlerName())
 		}
 		oi.StatusCode = ri.GetDefaultStatusCode()
 
