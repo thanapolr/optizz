@@ -43,66 +43,69 @@ func (g *RouterGroup) Use(handlers ...fiber.Handler) {
 }
 
 func (g *RouterGroup) Get(path string, handler *OptizzHandler, middlewares ...fiber.Handler) *RouterGroup {
-	return g.Handle2(path, "GET", handler, middlewares...)
+	return g.Handle(path, "GET", handler, middlewares...)
 }
 func (g *RouterGroup) Post(path string, handler *OptizzHandler, middlewares ...fiber.Handler) *RouterGroup {
-	return g.Handle2(path, "POST", handler, middlewares...)
+	return g.Handle(path, "POST", handler, middlewares...)
 }
 func (g *RouterGroup) Put(path string, handler *OptizzHandler, middlewares ...fiber.Handler) *RouterGroup {
-	return g.Handle2(path, "PUT", handler, middlewares...)
+	return g.Handle(path, "PUT", handler, middlewares...)
 }
 func (g *RouterGroup) Patch(path string, handler *OptizzHandler, middlewares ...fiber.Handler) *RouterGroup {
-	return g.Handle2(path, "PATCH", handler, middlewares...)
+	return g.Handle(path, "PATCH", handler, middlewares...)
 }
 func (g *RouterGroup) Delete(path string, handler *OptizzHandler, middlewares ...fiber.Handler) *RouterGroup {
-	return g.Handle2(path, "DELETE", handler, middlewares...)
+	return g.Handle(path, "DELETE", handler, middlewares...)
 }
 func (g *RouterGroup) Options(path string, handler *OptizzHandler, middlewares ...fiber.Handler) *RouterGroup {
-	return g.Handle2(path, "OPTIONS", handler, middlewares...)
+	return g.Handle(path, "OPTIONS", handler, middlewares...)
 }
 func (g *RouterGroup) Head(path string, handler *OptizzHandler, middlewares ...fiber.Handler) *RouterGroup {
-	return g.Handle2(path, "HEAD", handler, middlewares...)
+	return g.Handle(path, "HEAD", handler, middlewares...)
 }
 func (g *RouterGroup) Trace(path string, handler *OptizzHandler, middlewares ...fiber.Handler) *RouterGroup {
-	return g.Handle2(path, "TRACE", handler, middlewares...)
+	return g.Handle(path, "TRACE", handler, middlewares...)
 }
 
-func (g *RouterGroup) Handle2(path, method string, handler *OptizzHandler, middlewares ...fiber.Handler) *RouterGroup {
-	ri := handler.RouteInfo
-	oi := handler.OperationInfo
-
-	// TODO better ID e.g. [method]-[full path]-[function name]
-	// Set an operation ID if none is provided.
-	if oi.ID == "" {
-		oi.ID = ri.HandlerName()
-	}
-	oi.StatusCode = ri.GetDefaultStatusCode()
-
-	// Set an input type if provided.
-	it := ri.InputType()
-	if oi.InputModel != nil {
-		it = reflect.TypeOf(oi.InputModel)
-	}
-
-	// Consolidate path for OpenAPI spec.
-	operationPath := joinPaths(g.path, path)
-	// Add operation to the OpenAPI spec.
-	_, err := g.gen.AddOperation(operationPath, method, g.Name, it, ri.OutputType(), oi)
-	if err != nil {
-		panic(fmt.Sprintf(
-			"error while generating OpenAPI spec on operation %s %s: %s",
-			method, path, err,
-		))
-	}
-
+func (g *RouterGroup) Handle(path, method string, handler *OptizzHandler, middlewares ...fiber.Handler) *RouterGroup {
 	handlers := make([]fiber.Handler, 0)
 	if middlewares != nil && len(middlewares) > 0 {
 		handlers = append(handlers, middlewares...)
 	}
-	handlers = append(handlers, handler.Handler)
+
+	// Optizz handler with OpenAPI style
+	if handler != nil {
+		ri := handler.RouteInfo
+		oi := handler.OperationInfo
+
+		// TODO better ID e.g. [method]-[full path]-[function name]
+		// Set an operation ID if none is provided.
+		if oi.ID == "" {
+			oi.ID = ri.HandlerName()
+		}
+		oi.StatusCode = ri.GetDefaultStatusCode()
+
+		// Set an input type if provided.
+		it := ri.InputType()
+		if oi.InputModel != nil {
+			it = reflect.TypeOf(oi.InputModel)
+		}
+
+		// Consolidate path for OpenAPI spec.
+		operationPath := joinPaths(g.path, path)
+		// Add operation to the OpenAPI spec.
+		_, err := g.gen.AddOperation(operationPath, method, g.Name, it, ri.OutputType(), oi)
+		if err != nil {
+			panic(fmt.Sprintf(
+				"error while generating OpenAPI spec on operation %s %s: %s",
+				method, path, err,
+			))
+		}
+
+		handlers = append(handlers, handler.Handler)
+	}
 
 	g.group.Add(method, path, handlers...)
-
 	return g
 }
 
