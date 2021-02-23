@@ -1,7 +1,6 @@
 package optizz
 
 import (
-	"errors"
 	"github.com/gofiber/fiber/v2"
 	"reflect"
 	"runtime"
@@ -105,26 +104,26 @@ func (r *Route) GetTags() []string {
 	return tags
 }
 
-// GetRouteByHandler returns the route information of
-// the given wrapped handler.
-func GetRouteByHandler(h fiber.Handler, ctx *fiber.Ctx) (*Route, error) {
-	//ctx := &fiber.Ctx{}
-	ctx.Locals(wantRouteInfos, "")
-
-	funcsMu.Lock()
-	defer funcsMu.Unlock()
-	if _, ok := funcs[runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()]; !ok {
-		return nil, errors.New("handler is not wrapped by optic")
-	}
-	h(ctx)
-
-	i := ctx.Locals(routesInfos)
-	if i == nil {
-		return nil, errors.New("failed to retrieve handler infos")
-	}
-	route, ok := i.(*Route)
-	if !ok {
-		return nil, errors.New("failed to retrieve handler infos")
-	}
-	return route, nil
-}
+//// GetRouteByHandler returns the route information of
+//// the given wrapped handler.
+//func GetRouteByHandler(h fiber.Handler, ctx *fiber.Ctx) (*Route, error) {
+//	//ctx := &fiber.Ctx{}
+//	ctx.Locals(wantRouteInfos, "")
+//
+//	funcsMu.Lock()
+//	defer funcsMu.Unlock()
+//	if _, ok := funcs[runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()]; !ok {
+//		return nil, errors.New("handler is not wrapped by optic")
+//	}
+//	h(ctx)
+//
+//	i := ctx.Locals(routesInfos)
+//	if i == nil {
+//		return nil, errors.New("failed to retrieve handler infos")
+//	}
+//	route, ok := i.(*Route)
+//	if !ok {
+//		return nil, errors.New("failed to retrieve handler infos")
+//	}
+//	return route, nil
+//}

@@ -11,12 +11,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
-
-// DefaultMaxBodyBytes is the maximum allowed size of a request body in bytes.
-const DefaultMaxBodyBytes = 256 * 1024
 
 // Fields tags used by optic.
 const (
@@ -30,12 +26,6 @@ const (
 	ExplodeTag    = "explode"
 )
 
-const (
-	defaultMediaType = "application/json"
-	routesInfos      = "_route_infos"
-	wantRouteInfos   = "_want_route_infos"
-)
-
 var (
 	errorHook      ErrorHook  = DefaultErrorHook
 	bindHook       BindHook   = DefaultBindingHook
@@ -44,21 +34,14 @@ var (
 	bindHeaderHook BindHook   = DefaultBindHeaderHook
 	renderHook     RenderHook = DefaultRenderHook
 	execHook       ExecHook   = DefaultExecHook
-
-	mediaType = defaultMediaType
-
-	routes   = make(map[string]*Route)
-	routesMu = sync.Mutex{}
-	funcs    = make(map[string]struct{})
-	funcsMu  = sync.Mutex{}
 )
 
-// BindHook is the hook called by the wrapping gin-handler when
+// BindHook is the hook called by the wrapping Fiber-handler when
 // binding an incoming request to the optic-handler's input object.
 type BindHook func(*fiber.Ctx, reflect.Value) error
 
-// RenderHook is the last hook called by the wrapping gin-handler
-// before returning. It takes the Gin context, the HTTP status code
+// RenderHook is the last hook called by the wrapping Fiber-handler
+// before returning. It takes the Fiber context, the HTTP status code
 // and the response payload as parameters.
 // Its role is to render the payload to the client to the
 // proper format.
@@ -71,8 +54,8 @@ type RenderHook func(*fiber.Ctx, int, interface{})
 type ErrorHook func(*fiber.Ctx, error) (int, interface{})
 
 // An ExecHook is the func called to handle a request.
-// The default ExecHook simply calle the wrapping gin-handler
-// with the gin context.
+// The default ExecHook simply calle the wrapping Fiber-handler
+// with the Fiber context.
 type ExecHook func(*fiber.Ctx, fiber.Handler, string) error
 
 // DefaultErrorHook is the default error hook.
@@ -85,9 +68,9 @@ func DefaultErrorHook(c *fiber.Ctx, e error) (int, interface{}) {
 }
 
 // DefaultBindingHook is the default binding hook.
-// It uses Gin JSON binding to bind the body parameters of the request
+// It uses Fiber JSON binding to bind the body parameters of the request
 // to the input object of the handler.
-// Ir teturns an error if Gin binding fails.
+// It returns an error if Fiber binding fails.
 func DefaultBindingHook(c *fiber.Ctx, v reflect.Value) error {
 	i := v.Interface()
 	if c.Method() == http.MethodGet || c.Request().Header.ContentLength() == 0 {
@@ -114,7 +97,6 @@ func DefaultBindHeaderHook(c *fiber.Ctx, v reflect.Value) error {
 
 // DefaultRenderHook is the default render hook.
 // It marshals the payload to JSON, or returns an empty body if the payload is nil.
-// If Gin is running in debug mode, the marshalled JSON is indented.
 func DefaultRenderHook(c *fiber.Ctx, statusCode int, payload interface{}) {
 	if payload != nil {
 		c.Status(statusCode).JSON(payload)
@@ -124,21 +106,10 @@ func DefaultRenderHook(c *fiber.Ctx, statusCode int, payload interface{}) {
 }
 
 // DefaultExecHook is the default exec hook.
-// It simply executes the wrapping gin-handler with
+// It simply executes the wrapping Fiber-handler with
 // the given context.
 func DefaultExecHook(c *fiber.Ctx, h fiber.Handler, fname string) error {
 	return h(c)
-}
-
-// GetRoutes returns the routes handled by a optic-enabled handler.
-func GetRoutes() map[string]*Route {
-	return routes
-}
-
-// MediaType returns the current media type (MIME)
-// used by the actual render hook.
-func MediaType() string {
-	return defaultMediaType
 }
 
 // GetErrorHook returns the current error hook.
@@ -214,12 +185,9 @@ func GetRenderHook() RenderHook {
 // SetRenderHook sets the given hook as the default
 // rendering hook. The media type is used to generate
 // the OpenAPI specification.
-func SetRenderHook(rh RenderHook, mt string) {
+func SetRenderHook(rh RenderHook) {
 	if rh != nil {
 		renderHook = rh
-	}
-	if mt != "" {
-		mediaType = mt
 	}
 }
 
@@ -270,7 +238,7 @@ func (be BindError) ValidationErrors() validator.ValidationErrors {
 	return nil
 }
 
-// An extractorFunc extracts data from a gin context according to
+// An extractorFunc extracts data from a Fiber context according to
 // parameters specified in a field tag.
 type extractor func(*fiber.Ctx, string) (string, []string, error)
 
