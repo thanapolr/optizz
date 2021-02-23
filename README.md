@@ -8,7 +8,7 @@ Optizz := [Tonic](https://github.com/loopfz/gadgeto) + [wI2L/Fizz](https://githu
 The original code are from Tonic and wI2L/Fizz and then modified to work with Fiber.
 
 ## Example
-```
+```go
 app := fiber.New()
 
 z := optizz.NewFromApp(app)
